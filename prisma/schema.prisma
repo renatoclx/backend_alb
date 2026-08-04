@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model City {
+  id   String @id @default(uuid())
+  name String
+
+  clients Client[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cities")
+}
+
+model User {
+  id       String  @id @default(uuid())
+  name     String
+  email    String  @unique
+  password String
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("users")
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  name      String
+  email     String?   @unique
+  phone     String
+  birthDate DateTime?
+  document  String    @unique
+  address   String
+  cityId    String
+  city      City      @relation(fields: [cityId], references: [id])
+
+  sales   Sale[]
+  rentals Rental[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([cityId])
+  @@map("clients")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  name            String
+  reference       String?
+  description     String?
+  purchasePrice   Decimal
+  salePrice       Decimal
+  rentalPrice     Decimal
+  quantity        Int
+  minimalQuantity Int
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+
+  saleItems   SaleItem[]
+  rentalItems RentalItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([categoryId, reference])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model Sale {
+  id       String  @id @default(uuid())
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id])
+  total    Decimal
+
+  items SaleItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+enum RentalStatus {
+  ACTIVE
+  RETURNED
+}
+
+model Rental {
+  id                 String       @id @default(uuid())
+  clientId           String
+  client             Client       @relation(fields: [clientId], references: [id])
+  total              Decimal
+  startDate          DateTime     @default(now())
+  expectedReturnDate DateTime
+  returnedAt         DateTime?
+  status             RentalStatus @default(ACTIVE)
+
+  items RentalItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@map("rentals")
+}
+
+model RentalItem {
+  id        String  @id @default(uuid())
+  rentalId  String
+  rental    Rental  @relation(fields: [rentalId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rentalId])
+  @@index([productId])
+  @@map("rental_items")
+}
