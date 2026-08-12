@@ -32,8 +32,7 @@ Antes de implementar:
 3. Aguarde aprovação.
 4. Somente então altere os arquivos.
 
-- Comandos bash não necessitam de aprovação, execute-os.
-- Uso do python para tarefas específicas não precisam de aprovação, execute-os.
+- Comandos bash e o uso do Python não necessitam de aprovação (regra aplicada via `.claude/settings.json`, não por este arquivo).
 
 ---
 
