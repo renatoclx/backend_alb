@@ -19,8 +19,8 @@ model City {
 
   clients Client[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@map("cities")
 }
@@ -33,7 +33,7 @@ model User {
   isActive Boolean @default(true)
 
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  updatedAt DateTime?
   deletedAt DateTime?
 
   @@map("users")
@@ -54,7 +54,7 @@ model Client {
   rentals Rental[]
 
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  updatedAt DateTime?
   deletedAt DateTime?
 
   @@index([cityId])
@@ -67,8 +67,8 @@ model Category {
 
   products Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@map("categories")
 }
@@ -90,7 +90,7 @@ model Product {
   rentalItems RentalItem[]
 
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  updatedAt DateTime?
   deletedAt DateTime?
 
   @@unique([categoryId, reference])
@@ -106,8 +106,8 @@ model Sale {
 
   items SaleItem[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([clientId])
   @@map("sales")
@@ -122,8 +122,8 @@ model SaleItem {
   quantity  Int
   unitPrice Decimal
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([saleId])
   @@index([productId])
@@ -147,8 +147,8 @@ model Rental {
 
   items RentalItem[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([clientId])
   @@map("rentals")
@@ -163,8 +163,8 @@ model RentalItem {
   quantity  Int
   unitPrice Decimal
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([rentalId])
   @@index([productId])

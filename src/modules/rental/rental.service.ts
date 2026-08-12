@@ -114,13 +114,20 @@ export class RentalService {
       for (const item of rental.items) {
         await tx.product.update({
           where: { id: item.productId },
-          data: { quantity: { increment: item.quantity } },
+          data: {
+            quantity: { increment: item.quantity },
+            updatedAt: new Date(),
+          },
         });
       }
 
       return tx.rental.update({
         where: { id },
-        data: { status: RentalStatus.RETURNED, returnedAt: new Date() },
+        data: {
+          status: RentalStatus.RETURNED,
+          returnedAt: new Date(),
+          updatedAt: new Date(),
+        },
         include: { items: true },
       });
     });

@@ -103,6 +103,7 @@ export class ClientService {
         document: dto.document,
         address: dto.address,
         cityId: dto.cityId,
+        updatedAt: new Date(),
       },
     });
   }
@@ -123,7 +124,7 @@ export class ClientService {
 
     await this.prisma.client.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), updatedAt: new Date() },
     });
   }
 
@@ -138,7 +139,7 @@ export class ClientService {
 
     return this.prisma.client.update({
       where: { id },
-      data: { deletedAt: null },
+      data: { deletedAt: null, updatedAt: new Date() },
     });
   }
 

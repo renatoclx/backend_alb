@@ -90,6 +90,7 @@ export class UserService {
       data: {
         name: dto.name,
         email: dto.email,
+        updatedAt: new Date(),
       },
     });
 
@@ -111,7 +112,7 @@ export class UserService {
 
     await this.prisma.user.update({
       where: { id },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, updatedAt: new Date() },
     });
   }
 
@@ -120,7 +121,7 @@ export class UserService {
 
     const user = await this.prisma.user.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, updatedAt: new Date() },
     });
 
     return this.toEntity(user);
@@ -131,7 +132,7 @@ export class UserService {
 
     const user = await this.prisma.user.update({
       where: { id },
-      data: { isActive: true },
+      data: { isActive: true, updatedAt: new Date() },
     });
 
     return this.toEntity(user);
@@ -148,7 +149,7 @@ export class UserService {
 
     await this.prisma.user.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), updatedAt: new Date() },
     });
   }
 

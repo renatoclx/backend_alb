@@ -54,7 +54,7 @@ export class CategoryService {
 
     return this.prisma.category.update({
       where: { id },
-      data: { name: dto.name },
+      data: { name: dto.name, updatedAt: new Date() },
     });
   }
 

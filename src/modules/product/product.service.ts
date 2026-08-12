@@ -105,6 +105,7 @@ export class ProductService {
         quantity: dto.quantity,
         minimalQuantity: dto.minimalQuantity,
         categoryId: dto.categoryId,
+        updatedAt: new Date(),
       },
     });
   }
@@ -125,7 +126,7 @@ export class ProductService {
 
     await this.prisma.product.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), updatedAt: new Date() },
     });
   }
 
