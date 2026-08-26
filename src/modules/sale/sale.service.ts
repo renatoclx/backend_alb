@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -38,7 +39,13 @@ export class SaleService {
 
     let total = 0;
     const itemsData = dto.items.map((item, index) => {
-      const unitPrice = Number(products[index].salePrice);
+      const product = products[index];
+      if (product.salePrice == null) {
+        throw new BadRequestException(
+          `Produto ${product.id} não está disponível para venda`,
+        );
+      }
+      const unitPrice = Number(product.salePrice);
       total += unitPrice * item.quantity;
       return {
         productId: item.productId,

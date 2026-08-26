@@ -3,19 +3,19 @@ import { IsInt, IsNotEmpty, IsString, validateSync } from 'class-validator';
 
 class EnvironmentVariables {
   @IsInt()
-  PORT: number;
+  PORT!: number;
 
   @IsString()
   @IsNotEmpty()
-  DATABASE_URL: string;
+  DATABASE_URL!: string;
 
   @IsString()
   @IsNotEmpty()
-  JWT_SECRET: string;
+  JWT_SECRET!: string;
 
   @IsString()
   @IsNotEmpty()
-  JWT_EXPIRES_IN: string;
+  JWT_EXPIRES_IN!: string;
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -10,7 +10,7 @@ import {
 export class CreateClientDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsEmail()
@@ -18,7 +18,7 @@ export class CreateClientDto {
 
   @IsString()
   @IsNotEmpty()
-  phone: string;
+  phone!: string;
 
   @IsOptional()
   @IsDateString()
@@ -26,12 +26,12 @@ export class CreateClientDto {
 
   @IsString()
   @IsNotEmpty()
-  document: string;
+  document!: string;
 
   @IsString()
   @IsNotEmpty()
-  address: string;
+  address!: string;
 
   @IsUUID()
-  cityId: string;
+  cityId!: string;
 }

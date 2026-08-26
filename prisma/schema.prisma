@@ -73,18 +73,24 @@ model Category {
   @@map("categories")
 }
 
+enum ProductType {
+  SALE
+  RENTAL
+}
+
 model Product {
-  id              String   @id @default(uuid())
+  id              String      @id @default(uuid())
   name            String
   reference       String?
   description     String?
+  type            ProductType
   purchasePrice   Decimal
-  salePrice       Decimal
-  rentalPrice     Decimal
+  salePrice       Decimal?
+  rentalPrice     Decimal?
   quantity        Int
   minimalQuantity Int
   categoryId      String
-  category        Category @relation(fields: [categoryId], references: [id])
+  category        Category    @relation(fields: [categoryId], references: [id])
 
   saleItems   SaleItem[]
   rentalItems RentalItem[]
@@ -133,6 +139,7 @@ model SaleItem {
 enum RentalStatus {
   ACTIVE
   RETURNED
+  DELAY
 }
 
 model Rental {

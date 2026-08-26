@@ -29,12 +29,12 @@
 
 ### Atributos
 
-| Nome     | Descrição                   |
-| -------- | --------------------------- |
-| id       | Identificador único          |
-| name     | Nome do usuário              |
-| email    | E-mail utilizado para login  |
-| password | Hash da senha                |
+| Nome     | Descrição                      |
+| -------- | ------------------------------ |
+| id       | Identificador único            |
+| name     | Nome do usuário                |
+| email    | E-mail utilizado para login    |
+| password | Hash da senha                  |
 | isActive | Indica se o usuário está ativo |
 
 ### Relacionamentos
@@ -102,22 +102,23 @@
 
 ### Atributos
 
-| Nome            | Descrição                       |
-| --------------- | ------------------------------- |
-| id              | Identificador único             |
-| name            | Nome do produto                 |
-| reference       | Código de referência do produto |
-| description     | Descrição do produto            |
-| purchasePrice   | Preço de compra                 |
-| salePrice       | Preço de venda                  |
-| rentalPrice     | Preço de locação                |
-| quantity        | Quantidade em estoque           |
-| minimalQuantity | Quantidade mínima de estoque    |
-| categoryId      | Categoria associada             |
+| Nome            | Descrição                                                 |
+| --------------- | --------------------------------------------------------- |
+| id              | Identificador único                                       |
+| name            | Nome do produto                                           |
+| reference       | Código de referência do produto                           |
+| description     | Descrição do produto                                      |
+| type            | Tipo do produto: `SALE` (venda) ou `RENTAL` (locação)     |
+| purchasePrice   | Preço de compra                                           |
+| salePrice       | Preço de venda (só preenchido quando `type` é `SALE`)     |
+| rentalPrice     | Preço de locação (só preenchido quando `type` é `RENTAL`) |
+| quantity        | Quantidade em estoque                                     |
+| minimalQuantity | Quantidade mínima de estoque                              |
+| categoryId      | Categoria associada                                       |
 
 ### Responsabilidades
 
-- Nenhuma até o momento.
+- Manter o cadastro de produtos consistente.
 
 ### Relacionamentos
 
@@ -132,11 +133,11 @@
 
 ### Atributos
 
-| Nome     | Descrição                                    |
-| -------- | --------------------------------------------- |
-| id       | Identificador único                           |
-| clientId | Cliente que realizou a compra                 |
-| total    | Valor total da venda (soma dos itens)         |
+| Nome     | Descrição                             |
+| -------- | ------------------------------------- |
+| id       | Identificador único                   |
+| clientId | Cliente que realizou a compra         |
+| total    | Valor total da venda (soma dos itens) |
 
 ### Responsabilidades
 
@@ -155,13 +156,13 @@
 
 ### Atributos
 
-| Nome      | Descrição                                          |
-| --------- | --------------------------------------------------- |
-| id        | Identificador único                                  |
-| saleId    | Venda associada                                      |
-| productId | Produto vendido                                      |
-| quantity  | Quantidade vendida                                   |
-| unitPrice | Preço unitário praticado no momento da venda         |
+| Nome      | Descrição                                    |
+| --------- | -------------------------------------------- |
+| id        | Identificador único                          |
+| saleId    | Venda associada                              |
+| productId | Produto vendido                              |
+| quantity  | Quantidade vendida                           |
+| unitPrice | Preço unitário praticado no momento da venda |
 
 ### Relacionamentos
 
@@ -176,15 +177,15 @@
 
 ### Atributos
 
-| Nome               | Descrição                                          |
-| ------------------ | ---------------------------------------------------- |
-| id                 | Identificador único                                  |
-| clientId           | Cliente que realizou a locação                       |
-| total              | Valor total da locação (soma dos itens)              |
-| startDate          | Data de início da locação                            |
-| expectedReturnDate | Data prevista para devolução                         |
-| returnedAt         | Data em que a devolução efetivamente ocorreu          |
-| status             | Situação da locação (ativa ou devolvida)             |
+| Nome               | Descrição                                    |
+| ------------------ | -------------------------------------------- |
+| id                 | Identificador único                          |
+| clientId           | Cliente que realizou a locação               |
+| total              | Valor total da locação (soma dos itens)      |
+| startDate          | Data de início da locação                    |
+| expectedReturnDate | Data prevista para devolução                 |
+| returnedAt         | Data em que a devolução efetivamente ocorreu |
+| status             | Situação da locação (ativa, atrasada ou devolvida) |
 
 ### Responsabilidades
 
@@ -204,13 +205,13 @@
 
 ### Atributos
 
-| Nome      | Descrição                                          |
-| --------- | --------------------------------------------------- |
-| id        | Identificador único                                  |
-| rentalId  | Locação associada                                    |
-| productId | Produto locado                                       |
-| quantity  | Quantidade locada                                    |
-| unitPrice | Preço unitário praticado no momento da locação       |
+| Nome      | Descrição                                      |
+| --------- | ---------------------------------------------- |
+| id        | Identificador único                            |
+| rentalId  | Locação associada                              |
+| productId | Produto locado                                 |
+| quantity  | Quantidade locada                              |
+| unitPrice | Preço unitário praticado no momento da locação |
 
 ### Relacionamentos
 

@@ -47,7 +47,13 @@ export class RentalService {
 
     let total = 0;
     const itemsData = dto.items.map((item, index) => {
-      const unitPrice = Number(products[index].rentalPrice);
+      const product = products[index];
+      if (product.rentalPrice == null) {
+        throw new BadRequestException(
+          `Produto ${product.id} não está disponível para locação`,
+        );
+      }
+      const unitPrice = Number(product.rentalPrice);
       total += unitPrice * item.quantity;
       return {
         productId: item.productId,
@@ -96,11 +102,16 @@ export class RentalService {
       this.prisma.rental.count(),
     ]);
 
-    return paginate(rentals, total, page, limit);
+    return paginate(
+      rentals.map((rental) => this.withComputedStatus(rental)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<RentalEntity> {
-    return this.findOrThrow(id);
+    return this.withComputedStatus(await this.findOrThrow(id));
   }
 
   async returnRental(id: string): Promise<RentalEntity> {
@@ -143,6 +154,16 @@ export class RentalService {
       where: { productId },
     });
     return count > 0;
+  }
+
+  private withComputedStatus(rental: RentalEntity): RentalEntity {
+    if (
+      rental.status === RentalStatus.ACTIVE &&
+      rental.expectedReturnDate.getTime() < Date.now()
+    ) {
+      return { ...rental, status: RentalStatus.DELAY };
+    }
+    return rental;
   }
 
   private async findOrThrow(id: string): Promise<RentalEntity> {

@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -7,12 +8,17 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
+import { ProductType } from '../../../../generated/prisma/client';
 
 export class UpdateProductDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   name?: string;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  type?: ProductType;
 
   @IsOptional()
   @IsString()

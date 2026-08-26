@@ -1,15 +1,18 @@
+import { ProductType } from '../../../../generated/prisma/client';
+
 export class ProductEntity {
-  id: string;
-  name: string;
-  reference: string | null;
-  description: string | null;
+  id!: string;
+  name!: string;
+  reference!: string | null;
+  description!: string | null;
+  type!: ProductType;
   purchasePrice: unknown;
   salePrice: unknown;
   rentalPrice: unknown;
-  quantity: number;
-  minimalQuantity: number;
-  categoryId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
+  quantity!: number;
+  minimalQuantity!: number;
+  categoryId!: string;
+  createdAt!: Date;
+  updatedAt!: Date | null;
+  deletedAt!: Date | null;
 }

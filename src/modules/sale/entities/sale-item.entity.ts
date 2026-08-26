@@ -1,9 +1,9 @@
 export class SaleItemEntity {
-  id: string;
-  saleId: string;
-  productId: string;
-  quantity: number;
+  id!: string;
+  saleId!: string;
+  productId!: string;
+  quantity!: number;
   unitPrice: unknown;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt!: Date;
+  updatedAt!: Date | null;
 }

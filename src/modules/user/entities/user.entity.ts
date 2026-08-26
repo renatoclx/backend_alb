@@ -1,9 +1,9 @@
 export class UserEntity {
-  id: string;
-  name: string;
-  email: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
+  id!: string;
+  name!: string;
+  email!: string;
+  isActive!: boolean;
+  createdAt!: Date;
+  updatedAt!: Date | null;
+  deletedAt!: Date | null;
 }

@@ -3,15 +3,15 @@ import { Match } from '../../../common/decorators/match.decorator';
 
 export class ChangePasswordDto {
   @IsString()
-  currentPassword: string;
+  currentPassword!: string;
 
   @IsString()
   @MinLength(6)
-  newPassword: string;
+  newPassword!: string;
 
   @IsString()
   @Match('newPassword', {
     message: 'newPasswordConfirmation must match newPassword',
   })
-  newPasswordConfirmation: string;
+  newPasswordConfirmation!: string;
 }

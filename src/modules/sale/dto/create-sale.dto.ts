@@ -9,11 +9,11 @@ import { TransactionItemDto } from '../../../common/dto/transaction-item.dto';
 
 export class CreateSaleDto {
   @IsUUID()
-  clientId: string;
+  clientId!: string;
 
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => TransactionItemDto)
-  items: TransactionItemDto[];
+  items!: TransactionItemDto[];
 }

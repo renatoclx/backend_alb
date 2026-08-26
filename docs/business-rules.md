@@ -114,11 +114,19 @@
 - Quando o campo reference for informado, não deverão ter referências duplicadas dentro de uma mesma categoria.
 - O código de referência não representa a identidade do produto.
 - Todo produto deve estar associado a uma categoria cadastrada.
+- Todo produto deve ter um `type`: `SALE` (venda) ou `RENTAL` (locação).
+- O preço do tipo não selecionado é sempre gravado como `null`, mesmo que
+  seja enviado no payload — quando `type` é `SALE`, `rentalPrice` fica
+  `null`; quando `type` é `RENTAL`, `salePrice` fica `null`. Quem decide
+  qual preço é o do produto é o `type`, não o que o cliente mandou.
 
 ### Alteração
 
 - Um produto poderá mudar de categoria.
+- Um produto poderá mudar de `type` — nesse caso, o preço do tipo anterior
+  é zerado (`null`) e passa a valer a mesma regra de nulling do cadastro.
 - A alteração da referência deve respeitar a regra de unicidade dentro da categoria.
+- Um produto removido via soft delete poderá ser restaurado.
 
 ### Exclusão
 
@@ -126,7 +134,12 @@
 
 ### Consulta
 
-- Todos os produtos poderão ser consultados
+- Todos os produtos poderão ser consultados.
+- Produtos removidos (soft deleted) aparecem por padrão na listagem,
+  seguindo o mesmo padrão aplicado a Client (`includeDeleted`).
+- Uma venda não pode usar um produto com `salePrice` nulo (produto do
+  tipo `RENTAL`); uma locação não pode usar um produto com `rentalPrice`
+  nulo (produto do tipo `SALE`) — a API rejeita com erro claro.
 
 ---
 
@@ -170,6 +183,13 @@
 - Uma locação só pode ser devolvida uma vez; uma locação já devolvida não pode ser devolvida novamente.
 - Ao devolver, a quantidade de cada item retorna ao estoque do respectivo produto (`Product.quantity`).
 - A devolução registra a data efetiva (`returnedAt`) e altera o status da locação para devolvida.
+- Uma locação em atraso (`DELAY`) também pode ser devolvida normalmente.
+
+### Status
+
+- Uma locação possui três status possíveis: `ACTIVE` (ativa), `DELAY` (atrasada) e `RETURNED` (devolvida).
+- O status `DELAY` não é persistido no banco: é calculado dinamicamente nas consultas (listagem e busca por id). Uma locação com status `ACTIVE` cuja `expectedReturnDate` já passou é exibida como `DELAY`, sem alterar o registro em si.
+- Uma locação recém-criada nunca nasce em `DELAY`, pois `expectedReturnDate` é obrigatoriamente uma data futura no cadastro.
 
 ### Exclusão
 

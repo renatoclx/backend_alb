@@ -10,14 +10,14 @@ import { TransactionItemDto } from '../../../common/dto/transaction-item.dto';
 
 export class CreateRentalDto {
   @IsUUID()
-  clientId: string;
+  clientId!: string;
 
   @IsDateString()
-  expectedReturnDate: string;
+  expectedReturnDate!: string;
 
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => TransactionItemDto)
-  items: TransactionItemDto[];
+  items!: TransactionItemDto[];
 }

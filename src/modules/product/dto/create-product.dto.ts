@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -7,11 +8,12 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
+import { ProductType } from '../../../../generated/prisma/client';
 
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
@@ -22,26 +24,34 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
-  @IsNumber()
-  @Min(0)
-  purchasePrice: number;
+  @IsEnum(ProductType)
+  type!: ProductType;
 
   @IsNumber()
   @Min(0)
-  salePrice: number;
+  purchasePrice!: number;
 
+  // Obrigatoriedade condicionada ao `type` é aplicada no service, não aqui:
+  // quando type=SALE, salePrice é usado e rentalPrice é sempre gravado como
+  // null (e vice-versa para RENTAL) — ver ProductService.create().
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  rentalPrice: number;
+  salePrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  rentalPrice?: number;
 
   @IsInt()
   @Min(0)
-  quantity: number;
+  quantity!: number;
 
   @IsInt()
   @Min(0)
-  minimalQuantity: number;
+  minimalQuantity!: number;
 
   @IsUUID()
-  categoryId: string;
+  categoryId!: string;
 }
