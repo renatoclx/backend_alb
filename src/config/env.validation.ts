@@ -1,5 +1,11 @@
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsString, validateSync } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  validateSync,
+} from 'class-validator';
 
 class EnvironmentVariables {
   @IsInt()
@@ -16,6 +22,13 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_EXPIRES_IN!: string;
+
+  // Fuso usado nas agregações por dia/mês do Dashboard. Default:
+  // America/Sao_Paulo (o Brasil não tem horário de verão desde 2019).
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  APP_TIMEZONE?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

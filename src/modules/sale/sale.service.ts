@@ -7,17 +7,33 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { Prisma } from '../../../generated/prisma/client';
 import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
 import { ensureNoDuplicateProductIds } from '../../common/helpers/duplicate-check.helper';
+import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { ClientService } from '../client/client.service';
 import { ProductService } from '../product/product.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { SaleQueryDto } from './dto/sale-query.dto';
 import { SaleEntity } from './entities/sale.entity';
+
+// Nome do cliente/cidade e nome de cada produto vêm junto — o frontend não
+// cruza mais com /clients e /products pra montar a listagem.
+const SALE_INCLUDE = {
+  client: {
+    select: {
+      name: true,
+      document: true,
+      phone: true,
+      city: { select: { name: true } },
+    },
+  },
+  items: { include: { product: { select: { name: true } } } },
+} satisfies Prisma.SaleInclude;
 
 @Injectable()
 export class SaleService {
@@ -73,24 +89,31 @@ export class SaleService {
           total,
           items: { create: itemsData },
         },
-        include: { items: true },
+        include: SALE_INCLUDE,
       });
     });
   }
 
-  async findAll(
-    query: PaginationQueryDto,
-  ): Promise<PaginatedResult<SaleEntity>> {
-    const { page, limit } = query;
+  async findAll(query: SaleQueryDto): Promise<PaginatedResult<SaleEntity>> {
+    const { page, limit, search, productSearch } = query;
+    const clientFilter = containsInsensitive(search);
+    const productFilter = containsInsensitive(productSearch);
+    const where: Prisma.SaleWhereInput = {
+      ...(clientFilter ? { client: { name: clientFilter } } : {}),
+      ...(productFilter
+        ? { items: { some: { product: { name: productFilter } } } }
+        : {}),
+    };
 
     const [sales, total] = await Promise.all([
       this.prisma.sale.findMany({
+        where,
         skip: paginationSkip(page, limit),
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { items: true },
+        include: SALE_INCLUDE,
       }),
-      this.prisma.sale.count(),
+      this.prisma.sale.count({ where }),
     ]);
 
     return paginate(sales, total, page, limit);
@@ -99,7 +122,7 @@ export class SaleService {
   async findOne(id: string): Promise<SaleEntity> {
     const sale = await this.prisma.sale.findUnique({
       where: { id },
-      include: { items: true },
+      include: SALE_INCLUDE,
     });
     if (!sale) {
       throw new NotFoundException('Venda não encontrada');

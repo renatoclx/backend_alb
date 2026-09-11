@@ -7,18 +7,37 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RentalStatus } from '../../../generated/prisma/client';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { Prisma, RentalStatus } from '../../../generated/prisma/client';
 import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
 import { ensureNoDuplicateProductIds } from '../../common/helpers/duplicate-check.helper';
+import { computeRentalStatus } from '../../common/helpers/rental-status.helper';
+import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { ClientService } from '../client/client.service';
 import { ProductService } from '../product/product.service';
 import { CreateRentalDto } from './dto/create-rental.dto';
+import {
+  RentalQueryDto,
+  type RentalStatusFilter,
+} from './dto/rental-query.dto';
 import { RentalEntity } from './entities/rental.entity';
+
+// Nome do cliente/cidade e nome de cada produto vêm junto — o frontend não
+// precisa mais cruzar com /clients e /products pra montar a listagem.
+const RENTAL_INCLUDE = {
+  client: {
+    select: {
+      name: true,
+      document: true,
+      phone: true,
+      city: { select: { name: true } },
+    },
+  },
+  items: { include: { product: { select: { name: true } } } },
+} satisfies Prisma.RentalInclude;
 
 @Injectable()
 export class RentalService {
@@ -82,24 +101,28 @@ export class RentalService {
           expectedReturnDate,
           items: { create: itemsData },
         },
-        include: { items: true },
+        include: RENTAL_INCLUDE,
       });
     });
   }
 
-  async findAll(
-    query: PaginationQueryDto,
-  ): Promise<PaginatedResult<RentalEntity>> {
-    const { page, limit } = query;
+  async findAll(query: RentalQueryDto): Promise<PaginatedResult<RentalEntity>> {
+    const { page, limit, search, status } = query;
+    const nameFilter = containsInsensitive(search);
+    const where: Prisma.RentalWhereInput = {
+      ...(nameFilter ? { client: { name: nameFilter } } : {}),
+      ...this.statusWhere(status),
+    };
 
     const [rentals, total] = await Promise.all([
       this.prisma.rental.findMany({
+        where,
         skip: paginationSkip(page, limit),
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { items: true },
+        include: RENTAL_INCLUDE,
       }),
-      this.prisma.rental.count(),
+      this.prisma.rental.count({ where }),
     ]);
 
     return paginate(
@@ -108,6 +131,20 @@ export class RentalService {
       page,
       limit,
     );
+  }
+
+  private statusWhere(status?: RentalStatusFilter): Prisma.RentalWhereInput {
+    const now = new Date();
+    if (status === 'devolvida') {
+      return { status: RentalStatus.RETURNED };
+    }
+    if (status === 'ativa') {
+      return { status: RentalStatus.ACTIVE, expectedReturnDate: { gte: now } };
+    }
+    if (status === 'atrasada') {
+      return { status: RentalStatus.ACTIVE, expectedReturnDate: { lt: now } };
+    }
+    return {};
   }
 
   async findOne(id: string): Promise<RentalEntity> {
@@ -139,7 +176,7 @@ export class RentalService {
           returnedAt: new Date(),
           updatedAt: new Date(),
         },
-        include: { items: true },
+        include: RENTAL_INCLUDE,
       });
     });
   }
@@ -156,20 +193,16 @@ export class RentalService {
     return count > 0;
   }
 
-  private withComputedStatus(rental: RentalEntity): RentalEntity {
-    if (
-      rental.status === RentalStatus.ACTIVE &&
-      rental.expectedReturnDate.getTime() < Date.now()
-    ) {
-      return { ...rental, status: RentalStatus.DELAY };
-    }
-    return rental;
+  private withComputedStatus<
+    T extends { status: RentalStatus; expectedReturnDate: Date },
+  >(rental: T): T {
+    return { ...rental, status: computeRentalStatus(rental) };
   }
 
-  private async findOrThrow(id: string): Promise<RentalEntity> {
+  private async findOrThrow(id: string) {
     const rental = await this.prisma.rental.findUnique({
       where: { id },
-      include: { items: true },
+      include: RENTAL_INCLUDE,
     });
     if (!rental) {
       throw new NotFoundException('Locação não encontrada');

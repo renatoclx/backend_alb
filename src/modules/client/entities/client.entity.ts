@@ -7,6 +7,8 @@ export class ClientEntity {
   document!: string;
   address!: string;
   cityId!: string;
+  // Preenchido no create/findAll/findOne/update/restore (CLIENT_INCLUDE).
+  city?: { name: string };
   createdAt!: Date;
   updatedAt!: Date | null;
   deletedAt!: Date | null;

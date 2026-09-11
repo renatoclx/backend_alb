@@ -1,13 +1,13 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CityService } from './city.service';
+import { CityQueryDto } from './dto/city-query.dto';
 
 @Controller('cities')
 export class CityController {
   constructor(private readonly cityService: CityService) {}
 
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: CityQueryDto) {
     return this.cityService.findAll(query);
   }
 

@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 export class ClientQueryDto extends PaginationQueryDto {
@@ -7,4 +7,9 @@ export class ClientQueryDto extends PaginationQueryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   includeDeleted: boolean = true;
+
+  // Busca por nome (case-insensitive, substring).
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

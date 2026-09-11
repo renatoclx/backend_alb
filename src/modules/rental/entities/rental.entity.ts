@@ -10,6 +10,13 @@ export class RentalEntity {
   returnedAt!: Date | null;
   status!: RentalStatus;
   items!: RentalItemEntity[];
+  // Preenchido no create/findAll/findOne/return (RENTAL_INCLUDE).
+  client?: {
+    name: string;
+    document: string;
+    phone: string;
+    city: { name: string } | null;
+  };
   createdAt!: Date;
   updatedAt!: Date | null;
 }

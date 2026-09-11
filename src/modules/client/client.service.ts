@@ -7,10 +7,12 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '../../../generated/prisma/client';
 import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
+import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { CityService } from '../city/city.service';
 import { SaleService } from '../sale/sale.service';
@@ -19,6 +21,12 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ClientQueryDto } from './dto/client-query.dto';
 import { ClientEntity } from './entities/client.entity';
+
+// O nome da cidade vem junto — o frontend não resolve mais cityId → nome
+// via GET /cities.
+const CLIENT_INCLUDE = {
+  city: { select: { name: true } },
+} satisfies Prisma.ClientInclude;
 
 @Injectable()
 export class ClientService {
@@ -49,12 +57,17 @@ export class ClientService {
         address: dto.address,
         cityId: dto.cityId,
       },
+      include: CLIENT_INCLUDE,
     });
   }
 
   async findAll(query: ClientQueryDto): Promise<PaginatedResult<ClientEntity>> {
-    const { page, limit, includeDeleted } = query;
-    const where = includeDeleted ? {} : { deletedAt: null };
+    const { page, limit, includeDeleted, search } = query;
+    const nameFilter = containsInsensitive(search);
+    const where: Prisma.ClientWhereInput = {
+      ...(includeDeleted ? {} : { deletedAt: null }),
+      ...(nameFilter ? { name: nameFilter } : {}),
+    };
 
     const [clients, total] = await Promise.all([
       this.prisma.client.findMany({
@@ -62,6 +75,7 @@ export class ClientService {
         skip: paginationSkip(page, limit),
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: CLIENT_INCLUDE,
       }),
       this.prisma.client.count({ where }),
     ]);
@@ -105,6 +119,7 @@ export class ClientService {
         cityId: dto.cityId,
         updatedAt: new Date(),
       },
+      include: CLIENT_INCLUDE,
     });
   }
 
@@ -140,12 +155,14 @@ export class ClientService {
     return this.prisma.client.update({
       where: { id },
       data: { deletedAt: null, updatedAt: new Date() },
+      include: CLIENT_INCLUDE,
     });
   }
 
   private async findOrThrow(id: string): Promise<ClientEntity> {
     const client = await this.prisma.client.findFirst({
       where: { id, deletedAt: null },
+      include: CLIENT_INCLUDE,
     });
     if (!client) {
       throw new NotFoundException('Cliente não encontrado');

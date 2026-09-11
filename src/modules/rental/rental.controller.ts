@@ -7,9 +7,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { RentalService } from './rental.service';
 import { CreateRentalDto } from './dto/create-rental.dto';
+import { RentalQueryDto } from './dto/rental-query.dto';
 
 @Controller('rentals')
 export class RentalController {
@@ -21,7 +21,7 @@ export class RentalController {
   }
 
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: RentalQueryDto) {
     return this.rentalService.findAll(query);
   }
 

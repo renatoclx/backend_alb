@@ -4,14 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { Prisma } from '../../../generated/prisma/client';
 import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
+import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CategoryQueryDto } from './dto/category-query.dto';
 import { CategoryEntity } from './entities/category.entity';
 
 @Injectable()
@@ -25,20 +27,37 @@ export class CategoryService {
   }
 
   async findAll(
-    query: PaginationQueryDto,
+    query: CategoryQueryDto,
   ): Promise<PaginatedResult<CategoryEntity>> {
-    const { page, limit } = query;
+    const { page, limit, search } = query;
+    const nameFilter = containsInsensitive(search);
+    const where: Prisma.CategoryWhereInput = nameFilter
+      ? { name: nameFilter }
+      : {};
 
     const [categories, total] = await Promise.all([
       this.prisma.category.findMany({
+        where,
         skip: paginationSkip(page, limit),
         take: limit,
         orderBy: { name: 'asc' },
+        include: { _count: { select: { products: true } } },
       }),
-      this.prisma.category.count(),
+      this.prisma.category.count({ where }),
     ]);
 
-    return paginate(categories, total, page, limit);
+    return paginate(
+      categories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        productsCount: category._count.products,
+        createdAt: category.createdAt,
+        updatedAt: category.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<CategoryEntity> {

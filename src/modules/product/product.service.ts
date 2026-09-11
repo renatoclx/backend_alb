@@ -10,6 +10,7 @@ import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
+import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { CategoryService } from '../category/category.service';
 import { SaleService } from '../sale/sale.service';
@@ -18,7 +19,13 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { ProductEntity } from './entities/product.entity';
-import { ProductType } from '../../../generated/prisma/client';
+import { Prisma, ProductType } from '../../../generated/prisma/client';
+
+// Nome da categoria vem junto na listagem — o frontend não cruza com
+// /categories só pra exibir o nome.
+const PRODUCT_INCLUDE = {
+  category: { select: { name: true } },
+} satisfies Prisma.ProductInclude;
 
 @Injectable()
 export class ProductService {
@@ -38,10 +45,7 @@ export class ProductService {
       await this.ensureReferenceIsUnique(dto.categoryId, dto.reference);
     }
 
-    const { salePrice, rentalPrice } = this.resolvePricesByType(
-      dto.type,
-      dto,
-    );
+    const { salePrice, rentalPrice } = this.resolvePricesByType(dto.type, dto);
 
     return this.prisma.product.create({
       data: {
@@ -62,8 +66,13 @@ export class ProductService {
   async findAll(
     query: ProductQueryDto,
   ): Promise<PaginatedResult<ProductEntity>> {
-    const { page, limit, includeDeleted } = query;
-    const where = includeDeleted ? {} : { deletedAt: null };
+    const { page, limit, includeDeleted, search, type } = query;
+    const nameFilter = containsInsensitive(search);
+    const where: Prisma.ProductWhereInput = {
+      ...(includeDeleted ? {} : { deletedAt: null }),
+      ...(nameFilter ? { name: nameFilter } : {}),
+      ...(type ? { type } : {}),
+    };
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -71,6 +80,7 @@ export class ProductService {
         skip: paginationSkip(page, limit),
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: PRODUCT_INCLUDE,
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -105,13 +115,10 @@ export class ProductService {
       product.salePrice != null ? Number(product.salePrice) : undefined;
     const existingRentalPrice =
       product.rentalPrice != null ? Number(product.rentalPrice) : undefined;
-    const { salePrice, rentalPrice } = this.resolvePricesByType(
-      effectiveType,
-      {
-        salePrice: dto.salePrice ?? existingSalePrice,
-        rentalPrice: dto.rentalPrice ?? existingRentalPrice,
-      },
-    );
+    const { salePrice, rentalPrice } = this.resolvePricesByType(effectiveType, {
+      salePrice: dto.salePrice ?? existingSalePrice,
+      rentalPrice: dto.rentalPrice ?? existingRentalPrice,
+    });
 
     return this.prisma.product.update({
       where: { id },

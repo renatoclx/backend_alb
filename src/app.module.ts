@@ -12,6 +12,7 @@ import { ProductModule } from './modules/product/product.module';
 import { ClientModule } from './modules/client/client.module';
 import { SaleModule } from './modules/sale/sale.module';
 import { RentalModule } from './modules/rental/rental.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RentalModule } from './modules/rental/rental.module';
     ClientModule,
     SaleModule,
     RentalModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -12,6 +12,8 @@ export class ProductEntity {
   quantity!: number;
   minimalQuantity!: number;
   categoryId!: string;
+  // Preenchido na listagem (PRODUCT_INCLUDE).
+  category?: { name: string };
   createdAt!: Date;
   updatedAt!: Date | null;
   deletedAt!: Date | null;
