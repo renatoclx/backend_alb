@@ -94,7 +94,7 @@ rápido se faltar alguma.
 | --- | --- |
 | `npm run start:dev` | Desenvolvimento, com watch |
 | `npm run build` | Build de produção (`nest build`) |
-| `npm run start:prod` | Sobe o build (`dist/main`) |
+| `npm run start:prod` | Sobe o build (`dist/src/main`) |
 | `npm run lint` | ESLint + Prettier (`--fix`) |
 | `npm run test` / `test:e2e` / `test:cov` | Testes Jest |
 | `npm run setup` | Setup completo do zero (idempotente) — ver "Caminho rápido" acima |
@@ -104,6 +104,15 @@ rápido se faltar alguma.
 | `npm run db:seed` | Roda os dois seeds acima em sequência |
 | `npm run prisma:migrate:dev` | Nova migration a partir do schema |
 | `npm run prisma:studio` | UI de inspeção do banco |
+
+## Execução automática (notebook do cliente, Windows)
+
+Pra rodar sozinho junto com o Windows (sem o cliente executar nada
+manualmente): `scripts/start-windows.ps1` sobe Postgres + API + Frontend
+de forma silenciosa e idempotente, e `scripts/stop-windows.ps1` encerra.
+Passo a passo completo (pré-requisitos, atalho de inicialização,
+troubleshooting) em
+[`docs/execucao-local-windows.md`](docs/execucao-local-windows.md).
 
 ## Módulos (`src/modules/`)
 
@@ -125,3 +134,5 @@ das regras de negócio precede o código, nunca o contrário. Destaques:
 - `implementation-summary.md` / `dashboard-and-list-search.md` — registro
   técnico de cada rodada de implementação
 - `seed-cities.md` — geração do seed de municípios
+- `execucao-local-windows.md` — subir tudo automaticamente com o Windows,
+  sem o cliente rodar nada manualmente
