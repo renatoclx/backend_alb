@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -20,9 +20,13 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "db:seed:cities": "node dist/prisma/seed/seed-cities.js",
+    "db:seed:admin": "node dist/prisma/seed/seed-admin-user.js",
+    "db:seed": "npm run db:seed:cities && npm run db:seed:admin",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "setup": "bash scripts/setup.sh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

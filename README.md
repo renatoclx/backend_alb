@@ -25,36 +25,54 @@ Consumida pelo frontend em [`../frontend`](../frontend).
 
 ## Como rodar
 
+### Caminho rápido
+
 ```bash
-npm install
-
-cp .env.example .env
-# ajuste as variáveis se necessário (ver tabela abaixo)
-
-npm run db:up              # sobe o Postgres via Docker Compose
-npx prisma migrate dev     # aplica as migrations
-npx prisma generate        # gera o client (roda junto do migrate, mas pode ser manual)
-
-# seed de cidades (obrigatório — não há tela de cadastro de cidade)
-psql "$DATABASE_URL" -f prisma/seed/seed-cities.sql
-
+npm run setup      # instala, sobe o Postgres, migra, compila e roda os seeds
 npm run start:dev
 ```
 
+`npm run setup` (`scripts/setup.sh`) é idempotente — pode rodar de novo a
+qualquer momento sem duplicar dados. Ele faz tudo isso:
+
+1. Cria `.env` a partir de `.env.example`, se não existir.
+2. `npm install`.
+3. Sobe o Postgres via Docker Compose (`npm run db:up`) e espera ficar saudável.
+4. Aplica as migrations (`prisma migrate deploy`).
+5. Compila (`npm run build`).
+6. Popula as cidades — `npm run db:seed:cities` (só roda se a tabela estiver vazia).
+7. Garante o usuário padrão de acesso — `npm run db:seed:admin` (upsert, não
+   loga a senha em nenhum momento).
+
 API sobe em `http://localhost:3333` (ou a `PORT` configurada).
+
+### Passo a passo manual (equivalente)
+
+```bash
+npm install
+cp .env.example .env       # ajuste as variáveis se necessário (ver tabela abaixo)
+npm run db:up               # sobe o Postgres via Docker Compose
+npx prisma migrate deploy   # aplica as migrations
+npm run build
+npm run db:seed:cities      # popula cidades (obrigatório — sem tela de cadastro)
+npm run db:seed:admin       # garante o usuário padrão
+npm run start:dev
+```
 
 ### Primeiro acesso
 
-Não há seed de usuário. Crie o primeiro via rota pública:
+Não há tela de cadastro de usuário — a API não tem essa rota pública além
+da que cria o primeiro acesso. `npm run db:seed:admin` (rodado pelo
+`npm run setup`) garante o usuário padrão do ambiente de dev via
+`prisma/seed/seed-admin-user.ts` (upsert idempotente, credenciais
+configuráveis por `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` /
+`SEED_ADMIN_NAME`, com um padrão pré-definido no script — combine com o
+time antes de usar em qualquer ambiente compartilhado). A senha nunca é
+impressa no console nem exposta na tela de login do frontend.
 
-```bash
-curl -X POST http://localhost:3333/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Admin","email":"admin@exemplo.com","password":"...","passwordConfirmation":"..."}'
-```
-
-Depois, `POST /auth/login` devolve o `accessToken` (Bearer) usado em todo
-o restante da API.
+Alternativa, para criar outro usuário: `POST /users` (rota pública) com
+`name`/`email`/`password`/`passwordConfirmation`. Depois, `POST /auth/login`
+devolve o `accessToken` (Bearer) usado em todo o restante da API.
 
 ## Variáveis de ambiente (`.env`)
 
@@ -76,12 +94,25 @@ rápido se faltar alguma.
 | --- | --- |
 | `npm run start:dev` | Desenvolvimento, com watch |
 | `npm run build` | Build de produção (`nest build`) |
-| `npm run start:prod` | Sobe o build (`dist/main`) |
+| `npm run start:prod` | Sobe o build (`dist/src/main`) |
 | `npm run lint` | ESLint + Prettier (`--fix`) |
 | `npm run test` / `test:e2e` / `test:cov` | Testes Jest |
+| `npm run setup` | Setup completo do zero (idempotente) — ver "Caminho rápido" acima |
 | `npm run db:up` / `db:down` | Sobe/derruba o Postgres local |
+| `npm run db:seed:cities` | Popula cidades (só roda se a tabela estiver vazia) |
+| `npm run db:seed:admin` | Garante o usuário padrão de acesso (upsert) |
+| `npm run db:seed` | Roda os dois seeds acima em sequência |
 | `npm run prisma:migrate:dev` | Nova migration a partir do schema |
 | `npm run prisma:studio` | UI de inspeção do banco |
+
+## Execução automática (notebook do cliente, Windows)
+
+Pra rodar sozinho junto com o Windows (sem o cliente executar nada
+manualmente): `scripts/start-windows.ps1` sobe Postgres + API + Frontend
+de forma silenciosa e idempotente, e `scripts/stop-windows.ps1` encerra.
+Passo a passo completo (pré-requisitos, atalho de inicialização,
+troubleshooting) em
+[`docs/execucao-local-windows.md`](docs/execucao-local-windows.md).
 
 ## Módulos (`src/modules/`)
 
@@ -103,3 +134,5 @@ das regras de negócio precede o código, nunca o contrário. Destaques:
 - `implementation-summary.md` / `dashboard-and-list-search.md` — registro
   técnico de cada rodada de implementação
 - `seed-cities.md` — geração do seed de municípios
+- `execucao-local-windows.md` — subir tudo automaticamente com o Windows,
+  sem o cliente rodar nada manualmente
