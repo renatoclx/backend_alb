@@ -55,7 +55,15 @@ export class DashboardService {
     // (docs/dashboard-metrics.md > Performance / Fuso). O createdAt é gravado
     // como UTC ingênuo, então: interpreta como UTC e converte para o tz.
     const [activeRentals, rows] = await Promise.all([
-      this.prisma.rental.count({ where: { status: RentalStatus.ACTIVE } }),
+      // Parcialmente devolvida ainda tem equipamento com o cliente: conta
+      // como ativa.
+      this.prisma.rental.count({
+        where: {
+          status: {
+            in: [RentalStatus.ACTIVE, RentalStatus.PARTIALLY_RETURNED],
+          },
+        },
+      }),
       this.prisma.$queryRaw<MetricsRow[]>`
         WITH month_start AS (
           SELECT date_trunc('month', (now() AT TIME ZONE ${tz})) AS ts

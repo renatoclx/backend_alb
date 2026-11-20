@@ -5,6 +5,7 @@ export const RENTAL_STATUS_FILTERS = [
   'ativa',
   'devolvida',
   'atrasada',
+  'devolucao_parcial',
 ] as const;
 export type RentalStatusFilter = (typeof RENTAL_STATUS_FILTERS)[number];
 
@@ -14,7 +15,7 @@ export class RentalQueryDto extends PaginationQueryDto {
   @IsString()
   search?: string;
 
-  // "atrasada" é derivado (ACTIVE + data prevista vencida), não um valor
+  // "atrasada" é derivado (ACTIVE/PARTIALLY_RETURNED + data prevista vencida), não um valor
   // persistido — a tradução para o `where` fica no service.
   @IsOptional()
   @IsIn([...RENTAL_STATUS_FILTERS])
