@@ -1,4 +1,4 @@
-# Encerra a API (:3333) e o Frontend (:3000) iniciados por start-windows.ps1.
+﻿# Encerra a API (:3333) e o Frontend (:3000) iniciados por start-windows.ps1.
 # O Postgres (Docker) continua de pé — os dados não somem entre reinícios;
 # passe -StopDatabase se quiser derrubar o container também.
 #

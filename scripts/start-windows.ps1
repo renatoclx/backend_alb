@@ -1,4 +1,4 @@
-# Sobe o LocObra inteiro (Postgres + API + Frontend) de forma silenciosa —
+﻿# Sobe o LocObra inteiro (Postgres + API + Frontend) de forma silenciosa —
 # pensado pra ser o alvo de um atalho na pasta Inicializar do Windows, pra
 # o cliente nunca precisar rodar nada manualmente.
 #
@@ -39,6 +39,50 @@ function Test-CommandExists($Name) {
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+# Mostra uma caixa de mensagem visível e encerra. Como o script roda
+# escondido (via start-windows-hidden.vbs), sem isso uma falha não deixa
+# nenhum rastro visível pro cliente — ele não tem como saber que algo deu
+# errado nem o que te contar. Só é chamada em erro de verdade; no caminho
+# de sucesso o script continua 100% silencioso.
+function Exit-WithError($Message) {
+    Write-Log $Message
+    try {
+        Add-Type -AssemblyName PresentationFramework
+        [System.Windows.MessageBox]::Show(
+            "$Message`n`nLogs em: $LogDir",
+            "LocObra - erro ao iniciar",
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Error
+        ) | Out-Null
+    } catch {}
+    exit 1
+}
+
+# Balão de notificação no canto da tela (ícone na bandeja + mensagem que
+# some sozinha) — avisa o cliente que o sistema está de pé sem abrir
+# nenhuma janela. $script:NotifyIcon fica vivo até Close-Notification
+# rodar, senão o balão pode nem chegar a aparecer.
+function Show-Notification($Text) {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        if (-not $script:NotifyIcon) {
+            $script:NotifyIcon = New-Object System.Windows.Forms.NotifyIcon
+            $script:NotifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+            $script:NotifyIcon.Visible = $true
+        }
+        $script:NotifyIcon.BalloonTipTitle = "LocObra"
+        $script:NotifyIcon.BalloonTipText = $Text
+        $script:NotifyIcon.ShowBalloonTip(8000)
+    } catch {}
+}
+
+function Close-Notification {
+    if ($script:NotifyIcon) {
+        Start-Sleep -Seconds 3
+        $script:NotifyIcon.Dispose()
+    }
+}
+
 # Espera uma URL responder (qualquer status HTTP conta como "no ar" — só
 # timeout de conexão significa "ainda não subiu").
 function Wait-Http($Url, $TimeoutSec) {
@@ -55,19 +99,42 @@ function Wait-Http($Url, $TimeoutSec) {
     return $false
 }
 
+# Roda um comando externo (npm, docker, npx) sem deixar o script morrer por
+# causa de saída em stderr que não é erro de verdade (ex.: progresso do
+# "docker compose" ou avisos do npm) — só falha quando o código de saída é
+# diferente de 0.
+function Invoke-Step($Description, $LogFile, [scriptblock]$Action) {
+    Write-Log $Description
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Action *>> $LogFile
+    } finally {
+        $ErrorActionPreference = $prevPref
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Exit-WithError "ERRO: falha em '$Description' (codigo $LASTEXITCODE). Veja $LogFile"
+    }
+}
+
 # ---- 0) pré-requisitos --------------------------------------------------
 
+$IsFirstRun = -not (Test-Path (Join-Path $BackendPath "node_modules")) -or `
+              -not (Test-Path (Join-Path $FrontendPath "node_modules"))
+if ($IsFirstRun) {
+    Show-Notification "Iniciando o sistema pela primeira vez... isso pode levar alguns minutos."
+} else {
+    Show-Notification "Iniciando o sistema..."
+}
+
 if (-not (Test-CommandExists "node")) {
-    Write-Log "ERRO: Node.js não encontrado no PATH. Instale o Node.js LTS e tente de novo."
-    exit 1
+    Exit-WithError "ERRO: Node.js não encontrado no PATH. Instale o Node.js LTS e tente de novo."
 }
 if (-not (Test-CommandExists "docker")) {
-    Write-Log "ERRO: Docker não encontrado no PATH. Instale o Docker Desktop e tente de novo."
-    exit 1
+    Exit-WithError "ERRO: Docker não encontrado no PATH. Instale o Docker Desktop e tente de novo."
 }
 if (-not (Test-Path $FrontendPath)) {
-    Write-Log "ERRO: pasta do frontend não encontrada (procurei em $FrontendPath). Ajuste `$FrontendPath no script."
-    exit 1
+    Exit-WithError "ERRO: pasta do frontend não encontrada (procurei em $FrontendPath). Ajuste `$FrontendPath no script."
 }
 
 # ---- 1) Docker Desktop ---------------------------------------------------
@@ -79,15 +146,17 @@ if ($LASTEXITCODE -ne 0) {
     if (Test-Path $DockerExe) {
         Start-Process $DockerExe
     }
-    $deadline = (Get-Date).AddSeconds(90)
+    # Num boot recém-ligado da máquina (não só relogin), o Docker Desktop
+    # precisa subir a VM do WSL2 inteira — isso pode passar bem de 90s,
+    # principalmente com antivírus/atualizações concorrendo no boot.
+    $deadline = (Get-Date).AddSeconds(180)
     while ((Get-Date) -lt $deadline) {
         docker info *> $null
         if ($LASTEXITCODE -eq 0) { break }
         Start-Sleep -Seconds 3
     }
     if ($LASTEXITCODE -ne 0) {
-        Write-Log "ERRO: Docker Desktop não respondeu a tempo."
-        exit 1
+        Exit-WithError "ERRO: Docker Desktop não respondeu a tempo."
     }
 }
 Write-Log "Docker OK."
@@ -102,12 +171,10 @@ if (-not (Test-Path ".env")) {
 }
 
 if (-not (Test-Path "node_modules")) {
-    Write-Log "Instalando dependências do backend (primeira vez, pode demorar)..."
-    npm install *>> (Join-Path $LogDir "backend_$Stamp.log")
+    Invoke-Step "Instalando dependências do backend (primeira vez, pode demorar)..." (Join-Path $LogDir "backend_$Stamp.log") { npm install }
 }
 
-Write-Log "Subindo o Postgres..."
-docker compose up -d *>> (Join-Path $LogDir "docker_$Stamp.log")
+Invoke-Step "Subindo o Postgres..." (Join-Path $LogDir "docker_$Stamp.log") { docker compose up -d }
 
 $deadline = (Get-Date).AddSeconds(60)
 $healthy = $false
@@ -117,19 +184,17 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 2
 }
 if (-not $healthy) {
-    Write-Log "ERRO: Postgres não ficou saudável a tempo. Veja logs\docker_$Stamp.log"
-    exit 1
+    Exit-WithError "ERRO: Postgres não ficou saudável a tempo. Veja logs\docker_$Stamp.log"
 }
 Write-Log "Postgres OK."
 
 if (-not (Test-Path "dist\src\main.js")) {
-    Write-Log "Compilando o backend (primeira vez)..."
-    npm run build *>> (Join-Path $LogDir "backend_$Stamp.log")
+    Invoke-Step "Compilando o backend (primeira vez)..." (Join-Path $LogDir "backend_$Stamp.log") { npm run build }
 }
 
-Write-Log "Aplicando migrations e seeds..."
-npx prisma migrate deploy *>> (Join-Path $LogDir "backend_$Stamp.log")
-npm run db:seed *>> (Join-Path $LogDir "backend_$Stamp.log")
+$BackendLog = Join-Path $LogDir "backend_$Stamp.log"
+Invoke-Step "Aplicando migrations..." $BackendLog { npx prisma migrate deploy }
+Invoke-Step "Aplicando seeds..." $BackendLog { npm run db:seed }
 
 Write-Log "Iniciando a API..."
 Start-Process -FilePath "node.exe" -ArgumentList "dist\src\main" `
@@ -152,15 +217,13 @@ if (-not (Test-Path ".env.local")) {
 }
 
 if (-not (Test-Path "node_modules")) {
-    Write-Log "Instalando dependências do frontend (primeira vez, pode demorar)..."
-    npm install *>> (Join-Path $LogDir "frontend_$Stamp.log")
+    Invoke-Step "Instalando dependências do frontend (primeira vez, pode demorar)..." (Join-Path $LogDir "frontend_$Stamp.log") { npm install }
 }
 
 # NEXT_PUBLIC_API_URL é embutido no build — o .env.local precisa existir
 # ANTES do build, não só antes do start.
 if (-not (Test-Path ".next")) {
-    Write-Log "Compilando o frontend (primeira vez)..."
-    npm run build *>> (Join-Path $LogDir "frontend_$Stamp.log")
+    Invoke-Step "Compilando o frontend (primeira vez)..." (Join-Path $LogDir "frontend_$Stamp.log") { npm run build }
 }
 
 Write-Log "Iniciando o frontend..."
@@ -178,3 +241,5 @@ Write-Log "Frontend OK."
 
 Start-Process "http://localhost:3000"
 Write-Log "LocObra no ar."
+Show-Notification "Sistema pronto!"
+Close-Notification

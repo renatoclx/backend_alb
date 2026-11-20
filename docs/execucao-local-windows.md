@@ -69,10 +69,15 @@ Duas formas (escolha uma):
 
 ### Opção A — Atalho na pasta "Inicializar" (mais simples)
 
+> Use o lançador `scripts\start-windows-hidden.vbs` (não o `.ps1`
+> diretamente). O `-WindowStyle Hidden` do PowerShell sozinho **não é
+> confiável no Windows 11** quando o Windows Terminal é o terminal padrão
+> — a janela pode aparecer mesmo assim. O `.vbs` evita isso.
+
 1. Clique com o botão direito na Área de Trabalho → **Novo → Atalho**.
-2. Em "Local do item", cole exatamente:
+2. Em "Local do item", cole o caminho do arquivo `.vbs` (sem nada antes):
    ```
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\LocObra\backend_alb\scripts\start-windows.ps1"
+   C:\LocObra\backend_alb\scripts\start-windows-hidden.vbs
    ```
    (ajuste o caminho se o clone estiver em outro lugar)
 3. Dê um nome ao atalho (ex.: "LocObra") e finalize.
@@ -81,8 +86,8 @@ Duas formas (escolha uma):
 5. Mova (ou copie) o atalho criado pra dentro dessa pasta.
 
 A partir daí, todo login no Windows já sobe o Postgres, a API e o
-frontend sozinhos, sem janela nenhuma aparecendo (`-WindowStyle Hidden`),
-e abre o navegador no fim.
+frontend sozinhos, sem janela nenhuma aparecendo, e abre o navegador no
+fim.
 
 ### Opção B — Agendador de Tarefas (mais robusto)
 
@@ -95,9 +100,10 @@ vez de "ao logar".
 3. Geral: marque "Executar estando o usuário conectado ou não" (se
    disponível) e "Executar com os privilégios mais altos".
 4. Gatilhos: **Novo** → "Ao iniciar o sistema" (ou "Ao fazer logon").
-5. Ações: **Novo** → Programa/script: `powershell.exe` — Argumentos:
+5. Ações: **Novo** → Programa/script, cole o caminho do `.vbs` direto
+   (não precisa de argumentos nem de `powershell.exe` aqui):
    ```
-   -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\LocObra\backend_alb\scripts\start-windows.ps1"
+   C:\LocObra\backend_alb\scripts\start-windows-hidden.vbs
    ```
 6. Salve.
 
@@ -142,6 +148,13 @@ novo), já sobe a versão nova.
   passo 4.
 - **Nada abre no navegador**: confira `logs\start_*.log` (o script loga
   cada etapa) e os `*.err.log` de backend/frontend.
+- **Abre uma janela de shell visível em vez de rodar escondido, ou não
+  gera log nenhum**: o atalho não deve apontar pro `.ps1` nem conter o
+  comando `powershell.exe ...` — deve apontar direto pro
+  `start-windows-hidden.vbs` (ver "Opção A"/"Opção B" acima). Se mesmo
+  assim não gerar log, dê um duplo-clique manual no `.vbs` e, se nada
+  acontecer, rode o `.ps1` direto no PowerShell (passo 3) pra ver o erro
+  real na tela.
 - **Docker Desktop demora ou não inicia**: em algumas instalações o
   caminho do executável é diferente do assumido no script
   (`Program Files\Docker\Docker\Docker Desktop.exe`); abra o Docker
