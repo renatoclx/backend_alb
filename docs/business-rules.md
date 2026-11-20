@@ -180,15 +180,20 @@
 
 ### Devolução
 
-- Uma locação só pode ser devolvida uma vez; uma locação já devolvida não pode ser devolvida novamente.
-- Ao devolver, a quantidade de cada item retorna ao estoque do respectivo produto (`Product.quantity`).
-- A devolução registra a data efetiva (`returnedAt`) e altera o status da locação para devolvida.
-- Uma locação em atraso (`DELAY`) também pode ser devolvida normalmente.
+- A devolução pode ser **avulsa** (parcial: só alguns itens e/ou parte da quantidade de cada item) ou **total** (tudo o que ainda falta devolver).
+- Cada devolução (avulsa ou total) é registrada como uma `RentalReturn` com seus itens (`RentalReturnItem`), formando o histórico da locação.
+- A quantidade pendente de um item é a quantidade locada menos a soma do que já foi devolvido nas devoluções anteriores.
+- Na devolução avulsa, a quantidade de cada item deve ser um inteiro ≥ 1 e não pode ser maior que a pendente; o mesmo item não pode se repetir na lista; o item deve pertencer à locação.
+- Ao devolver, a quantidade devolvida de cada item retorna ao estoque do respectivo produto (`Product.quantity`).
+- Se após a devolução ainda houver itens pendentes, o status passa a `PARTIALLY_RETURNED`. Quando não sobra nada pendente (pela devolução total ou por avulsas que zerem o saldo), o status passa a `RETURNED` e a data efetiva (`returnedAt`) é registrada.
+- Uma locação já devolvida (`RETURNED`) não pode receber novas devoluções.
+- Uma locação em atraso (`DELAY`) também pode ser devolvida normalmente (avulsa ou total).
 
 ### Status
 
-- Uma locação possui três status possíveis: `ACTIVE` (ativa), `DELAY` (atrasada) e `RETURNED` (devolvida).
-- O status `DELAY` não é persistido no banco: é calculado dinamicamente nas consultas (listagem e busca por id). Uma locação com status `ACTIVE` cuja `expectedReturnDate` já passou é exibida como `DELAY`, sem alterar o registro em si.
+- Uma locação possui quatro status possíveis: `ACTIVE` (ativa), `PARTIALLY_RETURNED` (devolução parcial), `DELAY` (atrasada) e `RETURNED` (devolvida).
+- O status `DELAY` não é persistido no banco: é calculado dinamicamente nas consultas (listagem e busca por id). Uma locação com status `ACTIVE` ou `PARTIALLY_RETURNED` cuja `expectedReturnDate` já passou é exibida como `DELAY` (o atraso prevalece, pois ainda há itens com o cliente), sem alterar o registro em si.
+- Locações `PARTIALLY_RETURNED` contam como ativas na métrica de locações ativas do dashboard.
 - Uma locação recém-criada nunca nasce em `DELAY`, pois `expectedReturnDate` é obrigatoriamente uma data futura no cadastro.
 
 ### Exclusão

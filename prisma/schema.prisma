@@ -140,6 +140,7 @@ enum RentalStatus {
   ACTIVE
   RETURNED
   DELAY
+  PARTIALLY_RETURNED
 }
 
 model Rental {
@@ -152,7 +153,8 @@ model Rental {
   returnedAt         DateTime?
   status             RentalStatus @default(ACTIVE)
 
-  items RentalItem[]
+  items   RentalItem[]
+  returns RentalReturn[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -170,10 +172,42 @@ model RentalItem {
   quantity  Int
   unitPrice Decimal
 
+  returnItems RentalReturnItem[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
   @@index([rentalId])
   @@index([productId])
   @@map("rental_items")
+}
+
+// Cada devolução (parcial ou total) de uma locação. Uma locação pode ter
+// várias; o que falta devolver de cada item é a quantidade locada menos a
+// soma das quantidades já devolvidas (RentalReturnItem).
+model RentalReturn {
+  id         String   @id @default(uuid())
+  rentalId   String
+  rental     Rental   @relation(fields: [rentalId], references: [id])
+  returnedAt DateTime @default(now())
+
+  items RentalReturnItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([rentalId])
+  @@map("rental_returns")
+}
+
+model RentalReturnItem {
+  id             String       @id @default(uuid())
+  rentalReturnId String
+  rentalReturn   RentalReturn @relation(fields: [rentalReturnId], references: [id])
+  rentalItemId   String
+  rentalItem     RentalItem   @relation(fields: [rentalItemId], references: [id])
+  quantity       Int
+
+  @@index([rentalReturnId])
+  @@index([rentalItemId])
+  @@map("rental_return_items")
 }

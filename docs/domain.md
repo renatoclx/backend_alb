@@ -184,8 +184,8 @@
 | total              | Valor total da locação (soma dos itens)      |
 | startDate          | Data de início da locação                    |
 | expectedReturnDate | Data prevista para devolução                 |
-| returnedAt         | Data em que a devolução efetivamente ocorreu |
-| status             | Situação da locação (ativa, atrasada ou devolvida) |
+| returnedAt         | Data em que a devolução total ocorreu (todos os itens devolvidos) |
+| status             | Situação da locação (ativa, devolução parcial, atrasada ou devolvida) |
 
 ### Responsabilidades
 
@@ -196,6 +196,7 @@
 
 - Uma locação pertence a um único cliente.
 - Uma locação possui um ou mais itens (RentalItem).
+- Uma locação possui zero ou mais devoluções (RentalReturn).
 
 ---
 
@@ -217,3 +218,43 @@
 
 - Um item pertence a uma única locação.
 - Um item referencia um único produto.
+- Um item pode aparecer em várias devoluções (RentalReturnItem), até somar a quantidade locada.
+
+---
+
+## RentalReturn
+
+- Representa uma devolução (avulsa ou total) de itens de uma Rental. Uma locação pode ter várias.
+
+### Atributos
+
+| Nome       | Descrição                     |
+| ---------- | ----------------------------- |
+| id         | Identificador único           |
+| rentalId   | Locação associada             |
+| returnedAt | Data/hora em que a devolução ocorreu |
+
+### Relacionamentos
+
+- Uma devolução pertence a uma única locação.
+- Uma devolução possui um ou mais itens devolvidos (RentalReturnItem).
+
+---
+
+## RentalReturnItem
+
+- Representa a quantidade de um item da locação devolvida em uma RentalReturn.
+
+### Atributos
+
+| Nome           | Descrição                         |
+| -------------- | --------------------------------- |
+| id             | Identificador único               |
+| rentalReturnId | Devolução associada               |
+| rentalItemId   | Item da locação devolvido         |
+| quantity       | Quantidade devolvida nesta devolução |
+
+### Relacionamentos
+
+- Um item devolvido pertence a uma única devolução.
+- Um item devolvido referencia um único RentalItem.

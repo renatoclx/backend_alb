@@ -12,13 +12,17 @@ import {
   paginate,
   paginationSkip,
 } from '../../common/helpers/pagination.helper';
-import { ensureNoDuplicateProductIds } from '../../common/helpers/duplicate-check.helper';
+import {
+  ensureNoDuplicateProductIds,
+  ensureNoDuplicateRentalItemIds,
+} from '../../common/helpers/duplicate-check.helper';
 import { computeRentalStatus } from '../../common/helpers/rental-status.helper';
 import { containsInsensitive } from '../../common/helpers/search.helper';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { ClientService } from '../client/client.service';
 import { ProductService } from '../product/product.service';
 import { CreateRentalDto } from './dto/create-rental.dto';
+import { ReturnItemsDto } from './dto/return-items.dto';
 import {
   RentalQueryDto,
   type RentalStatusFilter,
@@ -37,7 +41,19 @@ const RENTAL_INCLUDE = {
     },
   },
   items: { include: { product: { select: { name: true } } } },
+  // Histórico de devoluções (parciais e total), da mais antiga à mais recente.
+  returns: { include: { items: true }, orderBy: { returnedAt: 'asc' } },
 } satisfies Prisma.RentalInclude;
+
+type RentalWithIncludes = Prisma.RentalGetPayload<{
+  include: typeof RENTAL_INCLUDE;
+}>;
+
+interface ItemToReturn {
+  rentalItemId: string;
+  productId: string;
+  quantity: number;
+}
 
 @Injectable()
 export class RentalService {
@@ -141,8 +157,19 @@ export class RentalService {
     if (status === 'ativa') {
       return { status: RentalStatus.ACTIVE, expectedReturnDate: { gte: now } };
     }
+    if (status === 'devolucao_parcial') {
+      return {
+        status: RentalStatus.PARTIALLY_RETURNED,
+        expectedReturnDate: { gte: now },
+      };
+    }
     if (status === 'atrasada') {
-      return { status: RentalStatus.ACTIVE, expectedReturnDate: { lt: now } };
+      return {
+        status: {
+          in: [RentalStatus.ACTIVE, RentalStatus.PARTIALLY_RETURNED],
+        },
+        expectedReturnDate: { lt: now },
+      };
     }
     return {};
   }
@@ -151,34 +178,122 @@ export class RentalService {
     return this.withComputedStatus(await this.findOrThrow(id));
   }
 
+  // Devolução total: devolve tudo o que ainda falta de cada item (após
+  // eventuais devoluções parciais) e encerra a locação.
   async returnRental(id: string): Promise<RentalEntity> {
     const rental = await this.findOrThrow(id);
+    this.ensureNotReturned(rental);
 
-    if (rental.status === RentalStatus.RETURNED) {
-      throw new ConflictException('Locação já foi devolvida');
-    }
+    const remaining = this.remainingByItem(rental);
+    const items: ItemToReturn[] = rental.items
+      .filter((item) => (remaining.get(item.id) ?? 0) > 0)
+      .map((item) => ({
+        rentalItemId: item.id,
+        productId: item.productId,
+        quantity: remaining.get(item.id) ?? 0,
+      }));
 
-    return this.prisma.$transaction(async (tx) => {
-      for (const item of rental.items) {
+    return this.registerReturn(rental.id, items, true);
+  }
+
+  // Devolução avulsa: devolve só os itens/quantidades informados. Se com
+  // ela não sobrar nada pendente, a locação é encerrada como devolvida.
+  async returnItems(id: string, dto: ReturnItemsDto): Promise<RentalEntity> {
+    const rental = await this.findOrThrow(id);
+    this.ensureNotReturned(rental);
+    ensureNoDuplicateRentalItemIds(dto.items);
+
+    const remaining = this.remainingByItem(rental);
+    const items: ItemToReturn[] = dto.items.map((dtoItem) => {
+      const rentalItem = rental.items.find(
+        (item) => item.id === dtoItem.rentalItemId,
+      );
+      if (!rentalItem) {
+        throw new BadRequestException(
+          `Item ${dtoItem.rentalItemId} não pertence a esta locação`,
+        );
+      }
+      const pending = remaining.get(rentalItem.id) ?? 0;
+      if (dtoItem.quantity > pending) {
+        throw new BadRequestException(
+          `${rentalItem.product.name}: quantidade a devolver é maior que a pendente (${pending})`,
+        );
+      }
+      remaining.set(rentalItem.id, pending - dtoItem.quantity);
+      return {
+        rentalItemId: rentalItem.id,
+        productId: rentalItem.productId,
+        quantity: dtoItem.quantity,
+      };
+    });
+
+    const fullyReturned = [...remaining.values()].every((qty) => qty === 0);
+    return this.registerReturn(rental.id, items, fullyReturned);
+  }
+
+  // Grava a devolução, restaura o estoque e atualiza o status — numa
+  // transação única.
+  private async registerReturn(
+    rentalId: string,
+    items: ItemToReturn[],
+    fullyReturned: boolean,
+  ): Promise<RentalEntity> {
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
+          data: { quantity: { increment: item.quantity }, updatedAt: now },
+        });
+      }
+
+      if (items.length > 0) {
+        await tx.rentalReturn.create({
           data: {
-            quantity: { increment: item.quantity },
-            updatedAt: new Date(),
+            rentalId,
+            returnedAt: now,
+            items: {
+              create: items.map((item) => ({
+                rentalItemId: item.rentalItemId,
+                quantity: item.quantity,
+              })),
+            },
           },
         });
       }
 
       return tx.rental.update({
-        where: { id },
-        data: {
-          status: RentalStatus.RETURNED,
-          returnedAt: new Date(),
-          updatedAt: new Date(),
-        },
+        where: { id: rentalId },
+        data: fullyReturned
+          ? { status: RentalStatus.RETURNED, returnedAt: now, updatedAt: now }
+          : { status: RentalStatus.PARTIALLY_RETURNED, updatedAt: now },
         include: RENTAL_INCLUDE,
       });
     });
+    return this.withComputedStatus(updated);
+  }
+
+  private ensureNotReturned(rental: { status: RentalStatus }): void {
+    if (rental.status === RentalStatus.RETURNED) {
+      throw new ConflictException('Locação já foi devolvida');
+    }
+  }
+
+  // Quanto ainda falta devolver de cada item: quantidade locada menos a
+  // soma do que já voltou nas devoluções anteriores.
+  private remainingByItem(rental: RentalWithIncludes): Map<string, number> {
+    const remaining = new Map(
+      rental.items.map((item) => [item.id, item.quantity]),
+    );
+    for (const rentalReturn of rental.returns) {
+      for (const returned of rentalReturn.items) {
+        remaining.set(
+          returned.rentalItemId,
+          (remaining.get(returned.rentalItemId) ?? 0) - returned.quantity,
+        );
+      }
+    }
+    return remaining;
   }
 
   async existsForClient(clientId: string): Promise<boolean> {
